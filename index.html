@@ -40,6 +40,8 @@ label.f>span{display:block;font-size:11px;color:var(--mut);margin-bottom:5px;tex
 .bet-toggle.off:active{background:#2f2312}
 .icon-btn{width:44px;height:44px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:19px;cursor:pointer;font-family:inherit;display:grid;place-items:center;transition:.15s;touch-action:manipulation;flex-shrink:0}
 .icon-btn:active{background:#243040}
+.icon-btn.listening{background:#0f2417;border-color:#1f6b33;color:#8ff0ae}
+.icon-btn.listening:active{background:#163423}
 .g-btn{flex:1;padding:12px;border-radius:9px;border:1px solid var(--bd);background:var(--card2);color:var(--tx);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;transition:.15s;touch-action:manipulation}
 .g-btn:active{background:#243040;transform:scale(.97)}
 .mv{padding:10px 14px;border-radius:9px;border:1px solid var(--bd);background:var(--card2);color:var(--tx);font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;flex-shrink:0}
@@ -1208,6 +1210,59 @@ function render(){
   });
   updateAll('nVal', v('nPlenos'));
   actualizarVisibilidadGravedad();
+}
+
+/* =====================================================================
+   RECONOCIMIENTO DE VOZ
+   ===================================================================== */
+let recognition = null;
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'es-ES';
+  recognition.interimResults = false;
+  recognition.continuous = false;
+  recognition.onresult = (e) => {
+    const transcript = e.results[0][0].transcript.toLowerCase();
+    const match = transcript.match(/(?:sale|salió|saca|sale el?)\s*(\d{1,2}|00|000)/i);
+    if (match){
+      let numStr = match[1];
+      let num = parseInt(numStr,10);
+      if (numStr === '00') num = 37;
+      if (numStr === '000') num = 38;
+      if (!isNaN(num)){
+        registrarTirada(num);
+        const btn = document.getElementById('voiceBtn');
+        if (btn){ btn.classList.remove('listening'); btn.textContent = '🎤'; }
+        const res = document.querySelector('[data-field="resultado"]');
+        if (res) res.innerHTML = `<div class="res-box obs">🎤 Detectado: ${displayNum(num)}</div>`;
+      }
+    }
+  };
+  recognition.onerror = (e) => {
+    console.warn('Error voz:', e.error);
+    const btn = document.getElementById('voiceBtn');
+    if (btn){ btn.classList.remove('listening'); btn.textContent = '🎤'; }
+  };
+}
+function toggleVoice(){
+  if (!recognition) return alert('Reconocimiento de voz no soportado en este navegador.');
+  const btn = document.getElementById('voiceBtn');
+  if (recognition.listening){
+    recognition.stop();
+    btn?.classList.remove('listening');
+    if (btn) btn.textContent = '🎤';
+  } else {
+    recognition.start();
+    btn?.classList.add('listening');
+    if (btn) btn.textContent = '🔴';
+    const res = document.querySelector('[data-field="resultado"]');
+    if (res) res.innerHTML = '<div class="res-box obs">🎤 Escuchando... Di "Sale [número]"</div>';
+  }
+}
+function updateVoiceBtn(){
+  const btn = document.getElementById('voiceBtn');
+  if (btn) btn.style.display = recognition ? '' : 'none';
 }
 
 /* =====================================================================

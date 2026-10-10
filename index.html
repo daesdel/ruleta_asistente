@@ -1310,7 +1310,10 @@ function applyMode(mode){
 }
 function switchMode(){
   const current = document.body.classList.contains('mode-mobile') ? 'mobile' : 'desktop';
-  applyMode(current === 'mobile' ? 'desktop' : 'mobile');
+  const next = current === 'mobile' ? 'desktop' : 'mobile';
+  applyMode(next);
+  // Al cambiar manualmente, eliminamos la preferencia guardada para que detectMode vuelva a funcionar en la próxima carga
+  try { localStorage.removeItem('rouletteMode'); } catch(e){}
   buildAllPads();
   render();
 }

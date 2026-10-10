@@ -13,6 +13,12 @@
   --rojo:#c62828;--negro:#333a44;--verde:#1b7a3e;
   --win:#2ea043;--loss:#f85149;
 }
+body.theme-light{
+  --bg:#f6f8fa;--card:#ffffff;--card2:#f0f3f6;--bd:#d0d7de;
+  --tx:#1f2328;--mut:#656d76;--ac:#d97706;
+  --rojo:#d32f2f;--negro:#24292f;--verde:#2e7d32;
+  --win:#1a7f37;--loss:#cf222e;
+}
 html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:14px;line-height:1.4;overscroll-behavior:none}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px}
@@ -287,6 +293,7 @@ body.mode-desktop .app-desktop{display:block}
       <button class="icon-btn" data-action="openStats">📊</button>
       <button class="icon-btn" data-action="openSetup">⚙</button>
       <button class="icon-btn" data-action="switchMode" title="Cambiar a escritorio">🖥</button>
+      <button class="icon-btn" data-action="toggleTheme" id="themeBtn" title="Cambiar tema">🌙</button>
     </div>
     <div data-field="rec"></div>
     <div data-field="pad" class="pad-container"></div>
@@ -301,6 +308,7 @@ body.mode-desktop .app-desktop{display:block}
       <div class="m-actions">
         <button class="g-btn" data-action="undo">↶ Deshacer</button>
         <button class="g-btn" data-action="random">🎲 Aleatoria</button>
+        <button class="g-btn" data-action="exportCSV">⬇️ Exportar CSV</button>
       </div>
     </div>
   </div>
@@ -325,6 +333,7 @@ body.mode-desktop .app-desktop{display:block}
       <strong>Aviso matemático:</strong> cada tirada es independiente, la esperanza es negativa.</p>
     </div>
     <button class="icon-btn" data-action="switchMode" title="Cambiar a móvil">📱</button>
+    <button class="icon-btn" data-action="toggleTheme" id="themeBtn" title="Cambiar tema">🌙</button>
   </header>
 
   <div class="d-grid">
@@ -347,6 +356,7 @@ body.mode-desktop .app-desktop{display:block}
         <button class="g-btn" data-action="undo">↶ Deshacer</button>
         <button class="g-btn" data-action="random">🎲 Aleatoria</button>
         <button class="g-btn" data-action="reset">⟲ Reiniciar</button>
+        <button class="g-btn" data-action="exportCSV">⬇️ Exportar CSV</button>
       </div>
       <h3>Historial</h3>
       <div data-field="historial" class="hist-mini"></div>
@@ -848,6 +858,7 @@ function registrarTirada(n){
 
   S.history.push(n);
   render();
+  saveState();
   setTimeout(() => animateHit(n, S.ultimo && S.ultimo.gana), 30);
 }
 function deshacer(){
@@ -871,6 +882,7 @@ function reiniciar(){
   S.snapshots = [];
   S.lastSelectedPositions = [];
   render();
+  saveState();
 }
 function cambiarZeros(){
   const z = getZeros();
@@ -1305,6 +1317,118 @@ function openStats(){ document.getElementById('mStatsOverlay').classList.add('ac
 function closeStats(){ document.getElementById('mStatsOverlay').classList.remove('active'); }
 
 /* =====================================================================
+   TEMA CLARO / OSCURO
+   ===================================================================== */
+function toggleTheme(){
+  const isLight = document.body.classList.toggle('theme-light');
+  const btn = document.getElementById('themeBtn');
+  if (btn) btn.textContent = isLight ? '☀️' : '🌙';
+  try { localStorage.setItem('rouletteTheme', isLight ? 'light' : 'dark'); } catch(e){}
+}
+function loadTheme(){
+  let saved = 'dark';
+  try { saved = localStorage.getItem('rouletteTheme') || 'dark'; } catch(e){}
+  if (saved === 'light'){
+    document.body.classList.add('theme-light');
+    const btn = document.getElementById('themeBtn');
+    if (btn) btn.textContent = '☀️';
+  }
+}
+
+/* =====================================================================
+   EXPORTAR A CSV
+   ===================================================================== */
+function exportarCSV(){
+  if (!S.history.length){
+    alert('No hay tiradas para exportar.');
+    return;
+  }
+  const cfg = leerConfig();
+  const rows = ['Tirada,Numero,Color,Paridad,Falta/Pasa,Docena,Columna,BancaPost,Neto,Racha'];
+  let banca = S.bancaInicial;
+  let racha = 0;
+  for (let i = 0; i < S.history.length; i++){
+    const n = S.history[i];
+    const color = colorOf(n);
+    const par = isZero(n) ? 'N/A' : (n % 2 === 0 ? 'Par' : 'Impar');
+    const mitad = isZero(n) ? 'N/A' : (n <= 18 ? 'Falta' : 'Pasa');
+    const docena = isZero(n) ? 'N/A' : (Math.ceil(n / 12));
+    const columna = isZero(n) ? 'N/A' : ((n % 3 === 1) ? 1 : (n % 3 === 2 ? 2 : 3));
+    // Simular banca histórica
+    if (S.apostando && S.snapshots[i]){
+      banca = S.snapshots[i].bankroll;
+      racha = S.snapshots[i].perdidas;
+    }
+    const neto = i > 0 ? (banca - (S.snapshots[i-1]?.bankroll || S.bancaInicial)) : 0;
+    rows.push(`${i+1},${displayNum(n)},${color},${par},${mitad},${docena},${columna},${banca.toFixed(2)},${neto.toFixed(2)},${racha}`);
+  }
+  const csvContent = "data:text/csv;charset=utf-8," + rows.map(r => `"${r}"`).join('\n');
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute('download', 'historial_ruleta.csv');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+/* =====================================================================
+   GUARDADO AUTOMÁTICO (localStorage)
+   ===================================================================== */
+function saveState(){
+  const state = {
+    history: S.history,
+    bankroll: S.bankroll,
+    bancaInicial: S.bancaInicial,
+    perdidas: S.perdidas,
+    ganancias: S.ganancias,
+    apostando: S.apostando,
+    config: {
+      modo: v('modo'),
+      zeros: v('zeros'),
+      nPlenos: v('nPlenos'),
+      criterio: v('criterio'),
+      progresion: v('progresion'),
+      unidad: v('unidad'),
+      prizePleno: v('prizePleno'),
+      prizeColor: v('prizeColor'),
+      prizeDocena: v('prizeDocena'),
+      bankAmount: v('bankAmount'),
+      bancaIni: v('bancaIni')
+    }
+  };
+  try { localStorage.setItem('rouletteState', JSON.stringify(state)); } catch(e){}
+}
+function loadState(){
+  let saved = null;
+  try { saved = localStorage.getItem('rouletteState'); } catch(e){}
+  if (!saved) return false;
+  try {
+    const state = JSON.parse(saved);
+    if (!state || !state.history) return false;
+    S.history = state.history || [];
+    S.bankroll = state.bankroll !== undefined ? state.bankroll : 1000;
+    S.bancaInicial = state.bancaInicial !== undefined ? state.bancaInicial : 1000;
+    S.perdidas = state.perdidas || 0;
+    S.ganancias = state.ganancias || 0;
+    S.apostando = state.apostando !== undefined ? state.apostando : true;
+    const cfg = state.config || {};
+    if (cfg.modo) document.querySelector(`[data-input="modo"][value="${cfg.modo}"]`)?.setAttribute('selected', 'selected');
+    if (cfg.zeros) document.querySelector(`[data-input="zeros"][value="${cfg.zeros}"]`)?.setAttribute('selected', 'selected');
+    if (cfg.nPlenos) document.querySelector('[data-input="nPlenos"]').value = cfg.nPlenos;
+    if (cfg.criterio) document.querySelector(`[data-input="criterio"][value="${cfg.criterio}"]`)?.setAttribute('selected', 'selected');
+    if (cfg.progresion) document.querySelector(`[data-input="progresion"][value="${cfg.progresion}"]`)?.setAttribute('selected', 'selected');
+    if (cfg.unidad) document.querySelector('[data-input="unidad"]').value = cfg.unidad;
+    if (cfg.prizePleno) document.querySelector('[data-input="prizePleno"]').value = cfg.prizePleno;
+    if (cfg.prizeColor) document.querySelector('[data-input="prizeColor"]').value = cfg.prizeColor;
+    if (cfg.prizeDocena) document.querySelector('[data-input="prizeDocena"]').value = cfg.prizeDocena;
+    if (cfg.bankAmount) document.querySelector('[data-input="bankAmount"]').value = cfg.bankAmount;
+    if (cfg.bancaIni) document.querySelector('[data-input="bancaIni"]').value = cfg.bancaIni;
+    return true;
+  } catch(e){ return false; }
+}
+
+/* =====================================================================
    INIT
    ===================================================================== */
 function init(){
@@ -1328,19 +1452,21 @@ function init(){
   document.body.addEventListener('click', e => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
-    const action = btn.dataset.action;
+     const action = btn.dataset.action;
     switch(action){
       case 'start':      showMScreen('game'); render(); break;
-      case 'openSetup':  showMScreen('setup'); break;
+      case 'openSetup':  showMScreen('setup'); saveState(); break;
       case 'openStats':  openStats(); break;
       case 'closeStats': closeStats(); break;
       case 'switchMode': switchMode(); break;
-      case 'toggle':     toggleApostar(); break;
-      case 'undo':       deshacer(); break;
+      case 'toggle':     toggleApostar(); saveState(); break;
+      case 'undo':       deshacer(); saveState(); break;
       case 'random':     { const s = getSlots(); registrarTirada(s[Math.floor(Math.random()*s.length)]); } break;
       case 'reset':      reiniciar(); break;
-      case 'deposit':    ingresarBanca(); break;
-      case 'withdraw':   retirarBanca(); break;
+      case 'deposit':    ingresarBanca(); saveState(); break;
+      case 'withdraw':   retirarBanca(); saveState(); break;
+      case 'toggleTheme': toggleTheme(); break;
+      case 'exportCSV':  exportarCSV(); break;
     }
   });
 

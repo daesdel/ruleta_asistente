@@ -114,9 +114,9 @@ body.mode-desktop .app-desktop{display:block}
 .hchip.verde{background:var(--verde)}
 .hchip:first-child{outline:2px solid var(--ac);outline-offset:1px}
 .app-mobile .ceros{width:26px}
-.app-mobile .tabla-nums{gap:1px}
-.app-mobile .tabla-nums .num{font-size:10px;border-radius:4px}
-.app-mobile .pad{gap:1px}
+.app-mobile .tabla-nums{grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.app-mobile .tabla-nums .num{font-size:13px;border-radius:6px}
+.app-mobile .pad{gap:6px}
 .banca-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .banca-row .b{background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:8px;text-align:center}
 .banca-row .b small{display:block;font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
@@ -294,6 +294,7 @@ body.mode-desktop .app-desktop{display:block}
       <button class="icon-btn" data-action="openSetup">⚙</button>
       <button class="icon-btn" data-action="switchMode" title="Cambiar a escritorio">🖥</button>
       <button class="icon-btn" data-action="toggleTheme" id="themeBtn" title="Cambiar tema">🌙</button>
+      <button class="icon-btn" data-action="toggleVoice" id="voiceBtn" title="Voz 🎤">🎤</button>
     </div>
     <div data-field="rec"></div>
     <div data-field="pad" class="pad-container"></div>
@@ -334,6 +335,7 @@ body.mode-desktop .app-desktop{display:block}
     </div>
     <button class="icon-btn" data-action="switchMode" title="Cambiar a móvil">📱</button>
     <button class="icon-btn" data-action="toggleTheme" id="themeBtn" title="Cambiar tema">🌙</button>
+    <button class="icon-btn" data-action="toggleVoice" id="voiceBtn" title="Voz 🎤">🎤</button>
   </header>
 
   <div class="d-grid">
@@ -1160,6 +1162,10 @@ function updatePadChips(){
     }
   });
 }
+function updateVoiceBtn(){
+  const btn = document.getElementById('voiceBtn');
+  if (btn) btn.style.display = recognition ? '' : 'none';
+}
 
 /* =====================================================================
    ANIMACIÓN
@@ -1467,6 +1473,7 @@ function init(){
       case 'withdraw':   retirarBanca(); saveState(); break;
       case 'toggleTheme': toggleTheme(); break;
       case 'exportCSV':  exportarCSV(); break;
+      case 'toggleVoice': toggleVoice(); break;
     }
   });
 

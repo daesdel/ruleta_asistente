@@ -1182,6 +1182,20 @@ function renderStats(){
   updateAll('stats', `
     <div class="miniGrid">${gridNums}</div>
 
+    <h3>💰 Resultado económico de la sesión</h3>
+    <div class="bars">
+      ${barra('Importe Apostado', S.totalApostado)}
+      ${barra('Beneficio Neto', S.bankroll - S.bancaInicial)}
+      ${barra('Aciertos', S.aciertos)}
+      ${barra('Fallos', S.fallos)}
+    </div>
+    <div class="pills">
+      <span class="pill">Tasa de acierto ${S.totalTiradas ? (S.aciertos / S.totalTiradas * 100).toFixed(1) : '0'}%</span>
+      <span class="pill">Máx. Ganancia ${S.maxGanancia.toFixed(2)} €</span>
+      <span class="pill">Máx. Pérdida ${S.maxPerdida.toFixed(2)} €</span>
+      <span class="pill">Mayor racha ${S.maxRacha}</span>
+    </div>
+
     <h3>Vista de rueda (orden físico)</h3>
     <div class="wheel-row">${wheelRow}</div>
 
@@ -1223,8 +1237,11 @@ function renderStats(){
     </p>
 
     <h3>Rankings (por posición en la rueda)</h3>
+    <h4 style="color:var(--mut);margin:6px 0 4px;text-transform:uppercase;font-size:10px">🔥 Números Calientes</h4>
     <div class="pills">${calientes.map(x => `<span class="pill hot">🔥 ${displayNum(toNum(x.pos))} · ${x.c}</span>`).join('')}</div>
+    <h4 style="color:var(--mut);margin:6px 0 4px;text-transform:uppercase;font-size:10px">❄️ Números Fríos</h4>
     <div class="pills">${frios.map(x => `<span class="pill cold">❄ ${displayNum(toNum(x.pos))} · ${x.c}</span>`).join('')}</div>
+    <h4 style="color:var(--mut);margin:6px 0 4px;text-transform:uppercase;font-size:10px">⏳ Más Atrasados</h4>
     <div class="pills">${atrasados.map(x => `<span class="pill late">⏳ ${displayNum(toNum(x.pos))} · ${fmtAtraso(x.l)}</span>`).join('')}</div>
   `);
 }

@@ -119,16 +119,29 @@ body.mode-desktop .app-desktop{display:block}
 .app-mobile .tabla-nums{grid-template-columns:repeat(12,minmax(0,1fr));gap:2px}
 .app-mobile .tabla-nums .num{font-size:10px;border-radius:4px}
 .app-mobile .pad{gap:2px}
-/* Modo horizontal en móvil: usar más espacio disponible */
-@media (orientation: landscape) and (max-height: 600px){
-  .app-mobile .tabla-nums{grid-template-columns:repeat(12,minmax(0,1fr));gap:3px}
-  .app-mobile .tabla-nums .num{font-size:11px}
-  .app-mobile .pad{gap:3px}
+/* Estadísticas de la Sesión */
+.sesion-stats{
+  background:var(--card2);border:1px solid var(--bd);border-radius:8px;
+  padding:10px 12px;margin:8px 0;
 }
-@media (orientation: landscape) and (min-height: 601px){
-  .app-mobile .tabla-nums{grid-template-columns:repeat(12,minmax(0,1fr));gap:3px}
-  .app-mobile .tabla-nums .num{font-size:12px}
-  .app-mobile .pad{gap:3px}
+.sesion-stats h3{
+  font-size:11px;text-transform:uppercase;letter-spacing:1px;
+  color:var(--ac);margin:0 0 8px;text-align:center;
+}
+.sesion-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+}
+.sesion-item{
+  background:var(--card);border:1px solid var(--bd);border-radius:6px;
+  padding:6px 4px;text-align:center;
+}
+.sesion-item small{
+  display:block;font-size:9px;color:var(--mut);
+  text-transform:uppercase;letter-spacing:.4px;font-weight:700;
+}
+.sesion-item b{
+  display:block;font-size:12px;margin-top:1px;
+  font-variant-numeric:tabular-nums;
 }
 .banca-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .banca-row .b{background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:8px;text-align:center}
@@ -317,6 +330,19 @@ body.mode-desktop .app-desktop{display:block}
         <div class="r"><small>Banca</small><b data-field="banca">—</b></div>
         <div class="r"><small>Benef</small><b data-field="benef">—</b></div>
         <div class="r"><small>Racha</small><b data-field="racha">—</b></div>
+      </div>
+      <div class="sesion-stats">
+        <h3>📊 Estadísticas de la Sesión</h3>
+        <div class="sesion-grid">
+          <div class="sesion-item"><small>Apostado</small><b data-field="apostadoTotal">0 €</b></div>
+          <div class="sesion-item"><small>Tiradas</small><b data-field="tiradasTotal">0</b></div>
+          <div class="sesion-item"><small>Aciertos</small><b data-field="aciertos">0</b></div>
+          <div class="sesion-item"><small>Fallos</small><b data-field="fallos">0</b></div>
+          <div class="sesion-item"><small>T. Acierto</small><b data-field="porAcierto">0%</b></div>
+          <div class="sesion-item"><small>Máx. Gan.</small><b data-field="maxGanancia">0 €</b></div>
+          <div class="sesion-item"><small>Máx. Pérd.</small><b data-field="maxPerdida">0 €</b></div>
+          <div class="sesion-item"><small>Mayor racha</small><b data-field="maxRacha">0</b></div>
+        </div>
       </div>
       <div data-field="historial" class="hist-mini"></div>
       <div class="m-actions">
@@ -507,7 +533,16 @@ const S = {
   perdidas: 0, ganancias: 0,
   pendiente: null, ultimo: null, snapshots: [],
   apostando: true,
-  lastSelectedPositions: []  // para marcar en el heatmap
+  lastSelectedPositions: [],  // para marcar en el heatmap
+  totalApostado: 0,
+  totalTiradas: 0,
+  aciertos: 0,
+  fallos: 0,
+  maxGanancia: 0,
+  maxPerdida: 0,
+  maxRacha: 0,
+  bancaMax: 1000,
+  bancaMin: 1000
 };
 
 /* =====================================================================
@@ -862,8 +897,17 @@ function registrarTirada(n){
     const neto = gana ? p.netIfWin : -p.totalStake;
 
     S.bankroll += neto;
-    if (gana){ S.perdidas = 0; S.ganancias++; }
-    else     { S.perdidas++;   S.ganancias = 0; }
+    S.totalApostado += p.totalStake;
+    S.totalTiradas += 1;
+    if (gana){ S.perdidas = 0; S.ganancias++; S.aciertos++; }
+    else     { S.perdidas++;   S.ganancias = 0; S.fallos++; }
+
+    if (neto > 0 && neto > S.maxGanancia) S.maxGanancia = neto;
+    if (neto < 0 && Math.abs(neto) > S.maxPerdida) S.maxPerdida = Math.abs(neto);
+    if (S.perdidas > S.maxRacha) S.maxRacha = S.perdidas;
+
+    if (S.bankroll > S.bancaMax) S.bancaMax = S.bankroll;
+    if (S.bankroll < S.bancaMin) S.bancaMin = S.bankroll;
 
     S.ultimo = { n, gana, neto, etiqueta: p.label, totalStake: p.totalStake,
                  coverage: p.coverage, returnIfWin: p.returnIfWin, observacion: false };
@@ -896,6 +940,15 @@ function reiniciar(){
   S.ultimo = null;
   S.snapshots = [];
   S.lastSelectedPositions = [];
+  S.totalApostado = 0;
+  S.totalTiradas = 0;
+  S.aciertos = 0;
+  S.fallos = 0;
+  S.maxGanancia = 0;
+  S.maxPerdida = 0;
+  S.maxRacha = 0;
+  S.bancaMax = S.bancaInicial;
+  S.bancaMin = S.bancaInicial;
   render();
   saveState();
 }
@@ -1038,9 +1091,29 @@ function renderHistorial(){
 }
 
 /* =====================================================================
+   ESTADÍSTICAS DE SESIÓN
+   ===================================================================== */
+function renderSesionStats(){
+  const apostado = (S.totalApostado).toFixed(2);
+  const tiradas = S.totalTiradas;
+  const aciertos = S.aciertos;
+  const fallos = S.fallos;
+  const tasaAcierto = tiradas ? ((aciertos / tiradas) * 100).toFixed(1) : '0';
+  updateAll('apostadoTotal', `${apostado} €`);
+  updateAll('tiradasTotal', tiradas);
+  updateAll('aciertos', aciertos);
+  updateAll('fallos', fallos);
+  updateAll('porAcierto', `${tasaAcierto}%`);
+  updateAll('maxGanancia', `${S.maxGanancia.toFixed(2)} €`);
+  updateAll('maxPerdida', `${S.maxPerdida.toFixed(2)} €`);
+  updateAll('maxRacha', S.maxRacha);
+}
+
+/* =====================================================================
    ESTADÍSTICAS
    ===================================================================== */
 function renderStats(){
+
   const { n, counts, lastIdx } = statsBasicas();
   if (n === 0){
     updateAll('stats', '<p class="muted">Introduce resultados para ver el análisis.</p>');
@@ -1213,6 +1286,7 @@ function render(){
   renderRecomendacion();
   renderResultado();
   renderHistorial();
+  renderSesionStats();
   renderStats();
   updatePadChips();
   const modo = v('modo');

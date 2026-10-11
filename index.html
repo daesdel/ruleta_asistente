@@ -1195,6 +1195,10 @@ function renderStats(){
       <span class="pill">Máx. Pérdida ${S.maxPerdida.toFixed(2)} €</span>
       <span class="pill">Mayor racha ${S.maxRacha}</span>
     </div>
+    <div style="margin:10px 0">
+      <button class="g-btn" data-action="compararAleatorio" style="width:100%">Comparar con apuesta aleatoria</button>
+      <button class="g-btn" data-action="generarApuestaSesion" style="width:100%;margin-top:6px">Generar apuesta de sesión</button>
+    </div>
 
     <h3>Vista de rueda (orden físico)</h3>
     <div class="wheel-row">${wheelRow}</div>
@@ -1539,6 +1543,34 @@ function exportarCSV(){
 }
 
 /* =====================================================================
+   COMPARAR CON ALEATORIO
+   ===================================================================== */
+function compararAleatorio(){
+  if (!S.history.length){ alert('No hay tiradas para comparar.'); return; }
+  const cfg = leerConfig();
+  const slots = getSlots();
+  const unidad = cfg.unidad;
+  const premio = cfg.modo === 'plenos' ? cfg.prizePleno : (cfg.modo === 'docena' || cfg.modo === 'columna' ? cfg.prizeDocena : cfg.prizeColor);
+  const cobertura = cfg.modo === 'plenos' ? cfg.nPlenos : (cfg.modo === 'docena' || cfg.modo === 'columna' ? 12 : 18);
+  const pWin = cobertura / slots.length;
+  let bancaRnd = S.bancaInicial;
+  S.history.forEach(n => {
+    const gana = Math.random() < pWin;
+    if (gana) bancaRnd += unidad * premio - unidad;
+    else bancaRnd -= unidad;
+  });
+  const real = S.bankroll - S.bancaInicial;
+  const rnd = bancaRnd - S.bancaInicial;
+  const diff = real - rnd;
+  alert(`Resultado real: ${real.toFixed(2)} €\nResultado aleatorio: ${rnd.toFixed(2)} €\nDiferencia: ${diff >=0 ? '+' : ''}${diff.toFixed(2)} €`);
+}
+function generarApuestaSesion(){
+  calcularApuesta();
+  render();
+  alert('Apuesta generada con los mismos criterios de la sesión.');
+}
+
+/* =====================================================================
    GUARDADO AUTOMÁTICO (localStorage)
    ===================================================================== */
 function saveState(){
@@ -1634,6 +1666,8 @@ function init(){
       case 'toggleTheme': toggleTheme(); break;
       case 'exportCSV':  exportarCSV(); break;
       case 'toggleVoice': toggleVoice(); break;
+      case 'compararAleatorio': compararAleatorio(); break;
+      case 'generarApuestaSesion': generarApuestaSesion(); break;
     }
   });
 
